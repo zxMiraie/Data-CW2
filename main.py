@@ -1,18 +1,17 @@
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Load data
+
+# Imports the recipes.csv into a Pandas dataframe
 df = pd.read_csv('recipes.csv')
 
-# Identify missing values
-missing_values = df.isnull().sum()
+#Treats values that ONLY have empty spaces
+df['cuisine'] = df['cuisine'].replace(r'^ $', 'Unknown', regex=True)
+df['category'] = df['category'].replace(r'^ $', 'Unknown', regex=True)
 
-# Replace missing values with mean of the column
-df = df.fillna(df.mean())
-
-# Summary statistics
+#Give Summary
 print(df.describe())
 
-# 10 highest rated recipes
-top_rated = df.sort_values('rating', ascending=False).head(10)
+top_rated = df.nlargest(10, 'rating_avg')
 print(top_rated)
