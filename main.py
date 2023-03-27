@@ -1,11 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+from keras import Sequential
+from keras.layers import Dense
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MinMaxScaler
 
 # Imports the recipes.csv into a Pandas dataframe
 df = pd.read_csv('recipes.csv')
@@ -100,22 +104,85 @@ similar_recipes = vec_space_method(recipe_title, df)
 print(similar_recipes)
 
 
-def knn_similarity(recipe_title, data, top_n=10):
-    categorical_data = pd.get_dummies(data[["category", "cuisine"]])
-    numerical_data = data[["rating_avg", "total_time"]]
+def knn_similarity(recipe_title, top_n=10):
+    # Fit and transform the combine_features column into a matrix of token counts
+    count_matrix = vectorizer.fit_transform(df['combine_features'])
 
-    scaler = MinMaxScaler()
-    numerical_data_scaled = scaler.fit_transform(numerical_data)
+    # Calculate the pairwise euclidean distances between each pair of rows in the count matrix
+    euclidean_dist = euclidean_distances(count_matrix, count_matrix)
 
-    features = pd.concat(
-        [pd.DataFrame(numerical_data_scaled, columns=["rating_avg", "total_time"]), categorical_data], axis=1)
+    # Fit the nearest neighbors model to the euclidean distances
+    model = NearestNeighbors(n_neighbors=top_n + 1, metric='cosine', algorithm="auto").fit(euclidean_dist)
 
-    model = NearestNeighbors(n_neighbors=top_n + 1, algorithm="auto", metric="euclidean").fit(features)
-    index = data[data["title"] == recipe_title].index[0]
+    # Find the index of the input recipe in the dataframe
+    recipe_index = df.index[df['title'] == recipe_title].tolist()[0]
 
-    distances, indices = model.kneighbors(features.iloc[index].values.reshape(1, -1))
-    return data.iloc[indices[0][1:]]["title"]
+    # Find the indices of the 10 most similar recipes using the KNN algorithm
+    distances, indices = model.kneighbors([euclidean_dist[recipe_index]], n_neighbors=top_n + 1)
+
+    # Get the titles of the recommended recipes
+    recommended_recipes = df.iloc[indices[0][1:]]['title']
+
+    return recommended_recipes
+
 
 recipe_title = "Chicken and coconut curry"
 similar_recipes = knn_similarity(recipe_title)
 print(similar_recipes)
+
+# Task 6
+test_set = [
+    "Chicken tikka masala",
+    "Albanian baked lamb with rice (Tavë kosi)",
+    "Baked salmon with chorizo rice",
+    "Almond lentil stew"]
+
+test_df = pd.DataFrame()
+vec_space_test = pd.DataFrame()
+knn_test = pd.DataFrame()
+
+for i in range(len(test_set)):
+    # Running the test_set through both recommenders and adding the results into sets
+    similar_recipes = vec_space_method(test_set[i], df)
+    vec_space_test = pd.concat([vec_space_test, similar_recipes], axis=0)
+    similar_recipes = knn_similarity(test_set[i])
+    knn_test = pd.concat([knn_test, similar_recipes], axis=0)
+
+
+def coverage(input_set, dataset):
+    # Counts the unique number of items in the set and then divides it by the total number of recipes
+    input_set = input_set[0].nunique()
+    return input_set / len(dataset)
+
+
+def personalisation(input_set):
+    # Transforms the set into a cosine matrix to calculate the personalisation
+    input_set_matrix = vectorizer.fit_transform(input_set[0])
+    input_set_matrix_cos = cosine_similarity(input_set_matrix)
+    return 1 - np.mean(input_set_matrix_cos)
+
+
+print(f'Vector Space Method coverage = {coverage(vec_space_test, df)}')
+print(f'KNN coverage = {coverage(knn_test, df)}')
+
+print(f'Vector Space Method personalisation = {personalisation(vec_space_test)}')
+print(f'KNN personalisation = {personalisation(knn_test)}')
+
+# Task 7
+
+df["tasty"] = df["rating_avg"].apply(lambda x: 1 if x > 4.2 else -1)
+
+X = df.iloc[:,6]
+Y = df.iloc[:,12]
+
+model = Sequential()
+model.add(Dense(12, activation="relu"))
+model.add(Dense(8, activation='relu'))
+model.add(Dense(1, activation="sigmoid"))
+model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+
+model.fit(X, Y ,epochs=150, batch_size=10, verbose=1)
+
+loss, accuracy = model.evaluate(X, Y, verbose=1)
+print("Accuracy: %.2f%%" % (accuracy*100))
+print('Test loss:', loss)
