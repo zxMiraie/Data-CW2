@@ -5,6 +5,8 @@ import numpy as np
 from keras import Sequential
 from keras.layers import Dense
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.neighbors import NearestNeighbors
@@ -169,21 +171,18 @@ print(f'KNN personalisation = {personalisation(knn_test)}')
 
 # Task 7
 
-df["tasty"] = df["rating_avg"].apply(lambda x: 1 if x > 4.2 else -1)
+df["istasty"] = df["rating_avg"].apply(lambda x: 1 if x > 4.2 else -1)
+significant_ratings = lambda x: x['rating_val'] >= 13
+significant_recipes = df[df.apply(significant_ratings, axis=1)]
 
-X = df.iloc[:,5:8]
-Y = df.iloc[:,12]
+X = significant_recipes[["rating_avg","rating_val"]]
+Y = significant_recipes['istasty']
 
 print(X)
 print(Y)
 
-
-
-model = Sequential()
-model.add(Dense(12, activation="relu"))
-model.add(Dense(1, activation="sigmoid"))
-model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
-
-model.fit(X, Y ,epochs=150, batch_size=10, verbose=1)
-_, accuracy = model.evaluate(X, Y, verbose=1)
-print("Accuracy: %.2f%%" % (accuracy*100))
+model = LogisticRegression()
+model.fit(X,Y)
+Y_predictions = model.predict(X)
+accuracy = accuracy_score(Y,Y_predictions)
+print('Accuracy (significant ratings only):', accuracy)
