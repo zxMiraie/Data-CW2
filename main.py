@@ -7,9 +7,8 @@ from keras.layers import Dense
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import MinMaxScaler
+
 
 # Imports the recipes.csv into a Pandas dataframe
 df = pd.read_csv('recipes.csv')
@@ -19,18 +18,18 @@ features = ['title', 'rating_avg', 'rating_val', 'total_time', 'category', 'cuis
 df['cuisine'] = df['cuisine'].replace(r'^ $', 'Unknown', regex=True)
 df['category'] = df['category'].replace(r'^ $', 'Unknown', regex=True)
 
-# # summary statistics
-# print(df.describe())
-#
-# top_rated = df.nlargest(10, 'rating_avg')
-# print(top_rated)
+# summary statistics
+print(df.describe())
 
-# # Visualize average ratings and number of ratings
-# plt.figure(figsize=(12, 6))
-# sns.scatterplot(data=df, x='rating_avg', y='rating_val')
-# plt.xlabel('Average Rating')
-# plt.ylabel('Number of Ratings')
-# plt.show()
+top_rated = df.nlargest(10, 'rating_avg')
+print(top_rated)
+
+# Visualize average ratings and number of ratings
+plt.figure(figsize=(12, 6))
+sns.scatterplot(data=df, x='rating_avg', y='rating_val')
+plt.xlabel('Average Rating')
+plt.ylabel('Number of Ratings')
+plt.show()
 
 # Calculate the percentile or mean of the number of ratings
 threshold = df['rating_val'].quantile(0.75)  # 75th percentile
@@ -99,9 +98,9 @@ def vec_space_method(recipe, df):
         print("Inputted title is not in dataframe")
 
 
-recipe_title = "Chicken and coconut curry"
-similar_recipes = vec_space_method(recipe_title, df)
-print(similar_recipes)
+# recipe_title = "Chicken and coconut curry"
+# similar_recipes = vec_space_method(recipe_title, df)
+# print(similar_recipes)
 
 
 def knn_similarity(recipe_title, top_n=10):
@@ -126,9 +125,9 @@ def knn_similarity(recipe_title, top_n=10):
     return recommended_recipes
 
 
-recipe_title = "Chicken and coconut curry"
-similar_recipes = knn_similarity(recipe_title)
-print(similar_recipes)
+# recipe_title = "Chicken and coconut curry"
+# similar_recipes = knn_similarity(recipe_title)
+# print(similar_recipes)
 
 # Task 6
 test_set = [
@@ -172,17 +171,19 @@ print(f'KNN personalisation = {personalisation(knn_test)}')
 
 df["tasty"] = df["rating_avg"].apply(lambda x: 1 if x > 4.2 else -1)
 
-X = df.iloc[:,6]
+X = df.iloc[:,5:8]
 Y = df.iloc[:,12]
+
+print(X)
+print(Y)
+
+
 
 model = Sequential()
 model.add(Dense(12, activation="relu"))
-model.add(Dense(8, activation='relu'))
 model.add(Dense(1, activation="sigmoid"))
 model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
 
 model.fit(X, Y ,epochs=150, batch_size=10, verbose=1)
-
-loss, accuracy = model.evaluate(X, Y, verbose=1)
+_, accuracy = model.evaluate(X, Y, verbose=1)
 print("Accuracy: %.2f%%" % (accuracy*100))
-print('Test loss:', loss)
